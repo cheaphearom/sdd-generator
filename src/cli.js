@@ -3,9 +3,13 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env'), 
 // Usage:
 //   node src/cli.js path/to/BRD.pdf [--out output] [--project "Name"] [--prepared-by "Team"]
 //   node src/cli.js --from-json examples/sample-sdd.json [--out output]   (render only, no API call)
+//   node src/cli.js --prompt path/to/BRD.pdf [--out output]   (write a prompt to paste into claude.ai)
 const fs = require('fs/promises');
 const path = require('path');
-const { brdToSdd, buildDocuments } = require('./pipeline');
+const { brdToSdd, buildDocuments, today } = require('./pipeline');
+const { extractText } = require('./extract');
+const { sddSchema } = require('./schema');
+const { SYSTEM_PROMPT, buildUserPrompt } = require('./prompt');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -22,9 +26,39 @@ async function main() {
   const outDir = path.resolve(args.out || 'output');
   const log = (msg) => console.log(`• ${msg}`);
 
+  if (args.prompt) {
+    // Manual mode: build one prompt to paste into claude.ai, then render the reply with --from-json.
+    const brdText = await extractText(args.prompt);
+    const text = [
+      SYSTEM_PROMPT,
+      '',
+      'Reply with ONLY one JSON object (no explanation, no markdown fences) that matches this JSON Schema:',
+      JSON.stringify(sddSchema),
+      '',
+      buildUserPrompt({ brdText, projectName: args.project, preparedBy: args['prepared-by'], date: today() }),
+    ].join('\n');
+    await fs.mkdir(outDir, { recursive: true });
+    const file = path.join(outDir, `${path.basename(args.prompt).replace(/\.[^.]+$/, '')}-prompt.txt`);
+    await fs.writeFile(file, text);
+    console.log(`Prompt written to: ${file}
+
+Next steps:
+  1. Open https://claude.ai, start a new chat and paste the whole file.
+  2. Save Claude's reply as a .json file, e.g. my-sdd.json
+     (if the reply is cut off, type "continue" and join the parts).
+  3. Run: node src/cli.js --from-json my-sdd.json`);
+    return;
+  }
+
   let result;
   if (args['from-json']) {
-    const sdd = JSON.parse(await fs.readFile(args['from-json'], 'utf8'));
+    const raw = (await fs.readFile(args['from-json'], 'utf8')).trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
+    let sdd;
+    try {
+      sdd = JSON.parse(raw);
+    } catch (err) {
+      throw new Error(`${args['from-json']} is not valid JSON (${err.message}). Make sure you copied the whole reply.`);
+    }
     result = await buildDocuments(sdd, outDir, { onProgress: log });
   } else if (args._[0]) {
     result = await brdToSdd({
@@ -36,7 +70,7 @@ async function main() {
       onProgress: log,
     });
   } else {
-    console.error('Usage: node src/cli.js <BRD.pdf|.docx|.md|.txt> [--out dir] [--project name]\n       node src/cli.js --from-json sdd.json [--out dir]');
+    console.error('Usage: node src/cli.js <BRD.pdf|.docx|.md|.txt> [--out dir] [--project name]\n       node src/cli.js --from-json sdd.json [--out dir]\n       node src/cli.js --prompt <BRD file> [--out dir]');
     process.exit(1);
   }
 

@@ -33,7 +33,7 @@ The AI returns **structured JSON**, not free text. The code controls layout, num
 ## Requirements
 
 - Node.js 18+
-- An Anthropic API key in `ANTHROPIC_API_KEY`
+- An Anthropic API key in `ANTHROPIC_API_KEY`, **or** Claude Code logged in with a Claude Pro/Max plan (see below)
 - LibreOffice (`soffice`) for the PDF. Set `SOFFICE_PATH` if it is not on the `PATH`.
 - `pdftotext` (poppler-utils) for page numbers in the table of contents. Optional.
 - Playwright with Chromium for diagrams. Optional; without it, diagrams appear as Mermaid source. Set `CHROMIUM_PATH` to use a specific browser.
@@ -76,6 +76,48 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 
 The app reads `.env` automatically when it starts. `.env` is in `.gitignore`, so your key is never committed. Instead of a `.env` file, you can also set the variable in your terminal (`export ANTHROPIC_API_KEY=...` on macOS/Linux, `set ANTHROPIC_API_KEY=...` in Windows CMD, `$env:ANTHROPIC_API_KEY="..."` in PowerShell) or in your hosting provider's environment settings.
 
+## No API credit? Use your Claude Pro or Max plan
+
+The API is billed separately from Claude Pro/Max. If you don't want to buy API credit, there are two other ways.
+
+### Option A: Claude Code (automatic, uses your Pro/Max login)
+
+1. Install Claude Code and log in once with your Claude account:
+
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   ```
+
+   ```bash
+   claude
+   ```
+
+   Choose "Claude account with subscription" and log in, then type `/exit`.
+
+2. In `.env`, set:
+
+   ```
+   SDD_PROVIDER=claude-code
+   ```
+
+   No `ANTHROPIC_API_KEY` is needed. If one is set, it is ignored in this mode.
+
+3. Use the web page (`npm start`) or the command line as normal.
+
+Each SDD counts toward your plan's usage limits. If you hit the limit, wait for it to reset. This option is meant for your own use on your own computer, not for a public website used by other people. For that, use an API key.
+
+### Option B: claude.ai (manual copy and paste)
+
+```bash
+node src/cli.js --prompt path/to/BRD.pdf
+```
+
+This writes `output/<name>-prompt.txt`. Paste the whole file into a new chat on https://claude.ai and save Claude's reply as `my-sdd.json`. If the reply is cut off, type "continue" and join the parts. Then render it:
+
+```bash
+node src/cli.js --from-json my-sdd.json
+```
+
 ## Use it
 
 **Web page and API**
@@ -112,7 +154,8 @@ All settings can go in `.env` (see `.env.example`) or be set as environment vari
 | Variable | Default | Purpose |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | – | Claude API key (required to generate). Put it in `.env`. |
-| `SDD_MODEL` | `claude-opus-5-5` | Model used to write the SDD |
+| `SDD_PROVIDER` | `api` | `api` (API key) or `claude-code` (Claude Code with your Pro/Max login) |
+| `SDD_MODEL` | `claude-opus-5-5` | Model used to write the SDD (in `claude-code` mode, your Claude Code default unless set) |
 | `SDD_EFFORT` | `high` | Reasoning effort: `low`, `medium`, `high`, `xhigh`, `max` |
 | `PORT` | `4000` | Web server port |
 | `SDD_DATA_DIR` | `./data` | Where uploads and generated files are kept (deleted after 24 h) |
