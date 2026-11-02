@@ -6,19 +6,41 @@ const fs = require('fs/promises');
 const os = require('os');
 const path = require('path');
 
+const { pathToFileURL } = require('url');
+const fsSync = require('fs');
+
 const run = promisify(execFile);
-const SOFFICE = process.env.SOFFICE_PATH || 'soffice';
+
+// Usual LibreOffice install locations, used when soffice is not on the PATH.
+const KNOWN_PATHS = [
+  'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+  'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+  '/Applications/LibreOffice.app/Contents/MacOS/soffice',
+  '/usr/bin/soffice',
+  '/usr/local/bin/soffice',
+  '/opt/homebrew/bin/soffice',
+  '/snap/bin/libreoffice',
+];
+
+function findSoffice() {
+  if (process.env.SOFFICE_PATH) return process.env.SOFFICE_PATH;
+  return KNOWN_PATHS.find((p) => fsSync.existsSync(p)) || 'soffice';
+}
+
+const INSTALL_HELP =
+  'LibreOffice is not installed, so only the Word file was produced. Install LibreOffice ' +
+  '(https://www.libreoffice.org/download/) and restart the app, or set SOFFICE_PATH in .env.';
 
 async function docxToPdf(docxPath, outDir) {
   // A private profile directory lets several conversions run at the same time.
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'sdd-lo-'));
   try {
-    await run(SOFFICE, [
-      `-env:UserInstallation=file://${profile}`,
+    await run(findSoffice(), [
+      `-env:UserInstallation=${pathToFileURL(profile).href}`,
       '--headless', '--norestore', '--convert-to', 'pdf', '--outdir', outDir, docxPath,
     ], { timeout: 180000 });
   } catch (err) {
-    if (err.code === 'ENOENT') throw new Error('LibreOffice (soffice) is not installed, so the PDF cannot be produced. Install LibreOffice or set SOFFICE_PATH.');
+    if (err.code === 'ENOENT') throw Object.assign(new Error(INSTALL_HELP), { code: 'NO_LIBREOFFICE' });
     throw err;
   } finally {
     await fs.rm(profile, { recursive: true, force: true });

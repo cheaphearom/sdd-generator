@@ -64,8 +64,12 @@ app.get('/api/sdd/:id', (req, res) => {
   res.json({
     ...rest,
     downloads: job.status === 'done'
-      ? { docx: `/api/sdd/${job.id}/download?format=docx`, pdf: `/api/sdd/${job.id}/download?format=pdf` }
+      ? {
+          docx: `/api/sdd/${job.id}/download?format=docx`,
+          pdf: job.result.pdfPath ? `/api/sdd/${job.id}/download?format=pdf` : undefined,
+        }
       : undefined,
+    warning: job.result?.warning || undefined,
   });
 });
 
@@ -74,6 +78,7 @@ app.get('/api/sdd/:id/download', (req, res) => {
   if (!job || job.status !== 'done') return res.status(404).json({ error: 'Document not ready' });
   const format = req.query.format === 'pdf' ? 'pdf' : 'docx';
   const file = format === 'pdf' ? job.result.pdfPath : job.result.docxPath;
+  if (!file) return res.status(404).json({ error: job.result.warning || 'PDF not available' });
   res.download(file, path.basename(file));
 });
 

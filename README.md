@@ -34,9 +34,17 @@ The AI returns **structured JSON**, not free text. The code controls layout, num
 
 - Node.js 18+
 - An Anthropic API key in `ANTHROPIC_API_KEY`, **or** Claude Code logged in with a Claude Pro/Max plan (see below)
-- LibreOffice (`soffice`) for the PDF. Set `SOFFICE_PATH` if it is not on the `PATH`.
+- LibreOffice for the PDF. Without it you still get the Word file. The app finds LibreOffice in its usual install folder on Windows, macOS and Linux; otherwise set `SOFFICE_PATH`.
 - `pdftotext` (poppler-utils) for page numbers in the table of contents. Optional.
 - Playwright with Chromium for diagrams. Optional; without it, diagrams appear as Mermaid source. Set `CHROMIUM_PATH` to use a specific browser.
+
+Installing LibreOffice:
+
+- **Windows:** download and install from https://www.libreoffice.org/download/ (default folder `C:\Program Files\LibreOffice` is found automatically).
+- **macOS:** download from the same page and drag it to Applications, or run `brew install --cask libreoffice`.
+- **Ubuntu/Debian:** see the command below.
+
+Restart the app (`npm start`) after installing.
 
 On Ubuntu/Debian:
 

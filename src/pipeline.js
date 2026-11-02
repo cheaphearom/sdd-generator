@@ -52,6 +52,10 @@ async function buildDocuments(sdd, outDir, { onProgress = () => {} } = {}) {
   const base = `${slug(sdd.meta.title)}-SDD`;
   const docxPath = path.join(outDir, `${base}.docx`);
 
+  // Save the SDD data first, so the AI's work is never lost if a later step fails.
+  const jsonPath = path.join(outDir, `${base}.json`);
+  await fs.writeFile(jsonPath, JSON.stringify(sdd, (k, v) => (k.startsWith('_') ? undefined : v), 2));
+
   onProgress('Rendering diagrams');
   const images = await renderDiagrams(collectDiagrams(sdd));
 
@@ -59,21 +63,27 @@ async function buildDocuments(sdd, outDir, { onProgress = () => {} } = {}) {
   let { buffer, entries } = await renderDocx(sdd, { images });
   await fs.writeFile(docxPath, buffer);
 
-  onProgress('Converting to PDF');
-  let pdfPath = await docxToPdf(docxPath, outDir);
-
-  const pageMap = await headingPages(pdfPath, entries.map((e) => e.label));
-  if (pageMap) {
-    onProgress('Adding page numbers to the table of contents');
-    ({ buffer } = await renderDocx(sdd, { images, pageMap }));
-    await fs.writeFile(docxPath, buffer);
+  // The PDF is optional: if LibreOffice is missing or fails, still return the Word file.
+  let pdfPath = null;
+  let warning = null;
+  try {
+    onProgress('Converting to PDF');
     pdfPath = await docxToPdf(docxPath, outDir);
+
+    const pageMap = await headingPages(pdfPath, entries.map((e) => e.label));
+    if (pageMap) {
+      onProgress('Adding page numbers to the table of contents');
+      ({ buffer } = await renderDocx(sdd, { images, pageMap }));
+      await fs.writeFile(docxPath, buffer);
+      pdfPath = await docxToPdf(docxPath, outDir);
+    }
+  } catch (err) {
+    pdfPath = null;
+    warning = err.code === 'NO_LIBREOFFICE' ? err.message : `The PDF could not be created (${err.message.split('\n')[0]}). The Word file is ready.`;
+    console.warn(`[pdf] ${warning}`);
   }
 
-  const jsonPath = path.join(outDir, `${base}.json`);
-  await fs.writeFile(jsonPath, JSON.stringify(sdd, (k, v) => (k.startsWith('_') ? undefined : v), 2));
-
-  return { docxPath, pdfPath, jsonPath };
+  return { docxPath, pdfPath, jsonPath, warning };
 }
 
 async function brdToSdd({ brdPath, originalName, outDir, projectName, preparedBy, onProgress = () => {} }) {

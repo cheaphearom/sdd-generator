@@ -74,7 +74,8 @@ Next steps:
     process.exit(1);
   }
 
-  console.log(`\nWord: ${result.docxPath}\nPDF:  ${result.pdfPath}\nJSON: ${result.jsonPath}`);
+  console.log(`\nWord: ${result.docxPath}\nPDF:  ${result.pdfPath || '(not created)'}\nJSON: ${result.jsonPath}`);
+  if (result.warning) console.log(`\nNote: ${result.warning}`);
 }
 
 main().catch((err) => {

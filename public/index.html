@@ -24,6 +24,7 @@
   .status { font-weight:bold; }
   .downloads a { display:inline-block; margin:12px 12px 0 0; padding:10px 16px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-weight:bold; }
   .error { color:#9E3A38; }
+  .warn { color:#8a5a00; background:#fff6e0; border:1px solid #f0d9a8; border-radius:6px; padding:10px; margin-top:14px; font-size:14px; }
   .spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--accent); border-right-color:transparent; border-radius:50%; animation:spin 1s linear infinite; vertical-align:-2px; margin-right:8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -85,7 +86,8 @@
         setStatus('Your SDD is ready.', false);
         $('downloads').innerHTML =
           '<a href="' + job.downloads.docx + '">Download Word (.docx)</a>' +
-          '<a href="' + job.downloads.pdf + '">Download PDF</a>';
+          (job.downloads.pdf ? '<a href="' + job.downloads.pdf + '">Download PDF</a>' : '') +
+          (job.warning ? '<p class="warn">' + escapeHtml(job.warning) + '</p>' : '');
         $('submit').disabled = false;
       } else if (job.status === 'failed') {
         fail(job.error);
