@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRD to SDD Generator</title>
+<style>
+  :root { --brown:#7A4E2D; --accent:#9A6542; --cream:#F4E8DE; --light:#FBF6F1; --text:#2B1D12; --muted:#6b5a4c; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background: var(--light); color: var(--text); }
+  main { max-width: 640px; margin: 48px auto; padding: 0 16px; }
+  h1 { color: var(--brown); margin: 0 0 4px; font-size: 28px; }
+  p.lead { color: var(--muted); margin: 0 0 28px; }
+  form, .result { background:#fff; border:1px solid #e3d3c5; border-radius:10px; padding:24px; }
+  label { display:block; font-weight:bold; font-size:14px; margin:16px 0 6px; }
+  label:first-child { margin-top:0; }
+  input[type=text] { width:100%; padding:10px; border:1px solid #d9c3b0; border-radius:6px; font-size:15px; }
+  .drop { border:2px dashed var(--accent); border-radius:8px; padding:28px; text-align:center; background:var(--cream); cursor:pointer; }
+  .drop.has-file { border-style:solid; }
+  .drop input { display:none; }
+  button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:6px; background:var(--brown); color:#fff; font-size:16px; font-weight:bold; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  .result { margin-top:20px; display:none; }
+  .status { font-weight:bold; }
+  .downloads a { display:inline-block; margin:12px 12px 0 0; padding:10px 16px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-weight:bold; }
+  .error { color:#9E3A38; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--accent); border-right-color:transparent; border-radius:50%; animation:spin 1s linear infinite; vertical-align:-2px; margin-right:8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<main>
+  <h1>BRD → SDD Generator</h1>
+  <p class="lead">Upload a Business Requirements Document and get a Software Design Document back as Word and PDF.</p>
+
+  <form id="form">
+    <label>BRD file (.pdf, .docx, .md, .txt)</label>
+    <div class="drop" id="drop">
+      <input type="file" id="file" name="brd" accept=".pdf,.docx,.md,.txt" required>
+      <span id="dropText">Click or drop your BRD here</span>
+    </div>
+    <label for="projectName">Project name (optional)</label>
+    <input type="text" id="projectName" name="projectName" placeholder="Taken from the BRD if left empty">
+    <label for="preparedBy">Prepared by (optional)</label>
+    <input type="text" id="preparedBy" name="preparedBy" placeholder="Software Design Team">
+    <button id="submit" type="submit">Generate SDD</button>
+  </form>
+
+  <div class="result" id="result">
+    <div class="status" id="status"></div>
+    <div class="downloads" id="downloads"></div>
+  </div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const drop = $('drop'), file = $('file');
+  drop.onclick = () => file.click();
+  drop.ondragover = (e) => { e.preventDefault(); };
+  drop.ondrop = (e) => { e.preventDefault(); file.files = e.dataTransfer.files; showFile(); };
+  file.onchange = showFile;
+  function showFile() {
+    if (file.files[0]) { $('dropText').textContent = file.files[0].name; drop.classList.add('has-file'); }
+  }
+
+  $('form').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!file.files[0]) return;
+    $('submit').disabled = true;
+    $('result').style.display = 'block';
+    $('downloads').innerHTML = '';
+    setStatus('Uploading…', true);
+    try {
+      const res = await fetch('/api/sdd', { method: 'POST', body: new FormData(e.target) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      poll(data.id);
+    } catch (err) { fail(err.message); }
+  };
+
+  async function poll(id) {
+    try {
+      const res = await fetch('/api/sdd/' + id);
+      const job = await res.json();
+      if (job.status === 'done') {
+        setStatus('Your SDD is ready.', false);
+        $('downloads').innerHTML =
+          '<a href="' + job.downloads.docx + '">Download Word (.docx)</a>' +
+          '<a href="' + job.downloads.pdf + '">Download PDF</a>';
+        $('submit').disabled = false;
+      } else if (job.status === 'failed') {
+        fail(job.error);
+      } else {
+        setStatus(job.progress + '…', true);
+        setTimeout(() => poll(id), 3000);
+      }
+    } catch (err) { fail(err.message); }
+  }
+
+  function setStatus(text, busy) {
+    $('status').className = 'status';
+    $('status').innerHTML = (busy ? '<span class="spinner"></span>' : '') + escapeHtml(text);
+  }
+  function fail(msg) {
+    $('status').className = 'status error';
+    $('status').textContent = 'Failed: ' + msg;
+    $('submit').disabled = false;
+  }
+  function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c])); }
+</script>
+</body>
+</html>
