@@ -22,7 +22,7 @@ The SDD must follow this exact section outline and order. Use these headings (wi
 6. Architectural Design
    - Paragraph, a Mermaid "flowchart TB" architecture diagram (top-to-bottom fits the portrait page better) (caption "Figure 1. ..."), and 6.1 Component Responsibilities table: Component | Responsibility.
 7. Data Flow Design
-   - Paragraph, a Mermaid flowchart Level-1 data flow diagram (caption "Figure 2. ..."), and 7.1 Key Data Flows (bullets).
+   - Paragraph, a Mermaid "flowchart TB" Level-1 data flow diagram (caption "Figure 2. ..."), and 7.1 Key Data Flows (bullets).
 8. Database Design
    - Paragraph, a Mermaid erDiagram (caption "Figure 3. Conceptual Entity Relationship Diagram"),
    - 8.1 Proposed Tables / Changes: Table | Type | Design Notes (Type is New / Existing / Modify),
@@ -59,7 +59,7 @@ Rules:
 - Use concrete, measurable values (p95 latency, availability %, retention periods, page-size limits).
 - Tables: every row must have exactly as many cells as there are columns.
 - Write in clear professional English, in the same language register as a formal design document. If the BRD is written in another language, still write the SDD in English unless the BRD asks otherwise.
-- Mermaid: keep diagrams simple and valid for Mermaid 11. Put node labels in double quotes, e.g. A["News UI"] --> B["News API"]. Do not use parentheses or special characters in node IDs. In erDiagram use only UPPER_SNAKE entity names and attribute lines of the form "type name PK|FK|UK". In sequenceDiagram declare participants with "participant X as Label".
+- Mermaid: keep diagrams simple and valid for Mermaid 11. Put node labels in double quotes, e.g. A["News UI"] --> B["News API"]. Do not use parentheses or special characters in node IDs. Never use Mermaid keywords such as CLASS, STYLE, END, GRAPH or DIRECTION as an entity or node ID (use e.g. SCHOOL_CLASS instead). In erDiagram use only UPPER_SNAKE entity names and attribute lines of the form "type name PK|FK|UK". In sequenceDiagram declare participants with "participant X as Label".
 - Put meta.date as the date given in the request. Status should normally be "Completed Design Baseline - Pending Stakeholder Approval".`;
 
 function buildUserPrompt({ brdText, projectName, date, preparedBy }) {

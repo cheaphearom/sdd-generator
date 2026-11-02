@@ -39,6 +39,16 @@ async function launchBrowser() {
   }
 }
 
+// Words Mermaid reserves as keywords. An entity or node called e.g. CLASS breaks the
+// diagram, so on failure we retry once with these renamed (CLASS -> CLASSES).
+const RESERVED = /\b(CLASS|CLASSDEF|STYLE|DIRECTION|END|GRAPH|SUBGRAPH)\b(?=\s|\[|\{|:|$)/g;
+function renameReserved(src) {
+  return src
+    .split('\n')
+    .map((line, i) => (i === 0 ? line : line.replace(RESERVED, (w) => (w.endsWith('S') ? `${w}ES` : `${w}S`))))
+    .join('\n');
+}
+
 // sources: array of Mermaid strings. Returns an array of {png, width, height} or null per diagram.
 async function renderDiagrams(sources) {
   if (!sources.length) return [];
@@ -54,7 +64,7 @@ async function renderDiagrams(sources) {
 
     for (let i = 0; i < sources.length; i++) {
       try {
-        const ok = await page.evaluate(async ({ src, id }) => {
+        const draw = (src, id) => page.evaluate(async ({ src, id }) => {
           const out = document.getElementById('out');
           out.innerHTML = '';
           const { svg } = await window.mermaid.render(id, src);
@@ -63,10 +73,32 @@ async function renderDiagrams(sources) {
           el.style.maxWidth = '900px'; // close to the 7-inch page width, so text is not shrunk much
           el.style.background = '#fff';
           return true;
-        }, { src: sources[i], id: `d${i}` });
-        if (!ok) throw new Error('render failed');
-        const el = await page.$('#out svg');
-        const box = await el.boundingBox();
+        }, { src, id });
+        try {
+          await draw(sources[i], `d${i}`);
+        } catch (err) {
+          const fixed = renameReserved(sources[i]);
+          if (fixed === sources[i]) throw err;
+          await draw(fixed, `d${i}r`);
+        }
+        let el = await page.$('#out svg');
+        let box = await el.boundingBox();
+        // A left-to-right flowchart that comes out very wide would shrink to unreadable
+        // text on a portrait page, so redraw it top-to-bottom.
+        const header = /^(\s*(?:flowchart|graph)\s+)(LR|RL)\b/;
+        if (box.width / box.height > 2.2 && header.test(sources[i])) {
+          await draw(sources[i].replace(header, '$1TB'), `d${i}t`).catch(() => {});
+          const tbEl = await page.$('#out svg');
+          const tbBox = tbEl && (await tbEl.boundingBox());
+          if (tbBox && tbBox.width / tbBox.height < box.width / box.height) {
+            el = tbEl;
+            box = tbBox;
+          } else {
+            await draw(sources[i], `d${i}b`);
+            el = await page.$('#out svg');
+            box = await el.boundingBox();
+          }
+        }
         const png = await el.screenshot({ type: 'png', omitBackground: false });
         results.push({ png, width: box.width, height: box.height });
       } catch (err) {
