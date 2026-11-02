@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env'), quiet: true }); // loads ANTHROPIC_API_KEY etc. from .env
 // Web API + upload page.
 //   POST /api/sdd                       multipart field "brd" (+ optional projectName, preparedBy) -> { id }
 //   GET  /api/sdd/:id                   job status and progress

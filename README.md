@@ -62,9 +62,19 @@ cd sdd-generator
 npm install
 ```
 
+Add your Claude API key. Create a key at https://platform.claude.com/settings/keys, then copy the example settings file:
+
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+cp .env.example .env
 ```
+
+Open `.env` and replace `sk-ant-your-key-here` with your key:
+
+```
+ANTHROPIC_API_KEY=sk-ant-api03-...
+```
+
+The app reads `.env` automatically when it starts. `.env` is in `.gitignore`, so your key is never committed. Instead of a `.env` file, you can also set the variable in your terminal (`export ANTHROPIC_API_KEY=...` on macOS/Linux, `set ANTHROPIC_API_KEY=...` in Windows CMD, `$env:ANTHROPIC_API_KEY="..."` in PowerShell) or in your hosting provider's environment settings.
 
 ## Use it
 
@@ -96,9 +106,12 @@ node src/cli.js --from-json examples/sample-sdd.json --out output
 
 ## Settings
 
+All settings can go in `.env` (see `.env.example`) or be set as environment variables.
+
+
 | Variable | Default | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | – | Claude API key (required to generate) |
+| `ANTHROPIC_API_KEY` | – | Claude API key (required to generate). Put it in `.env`. |
 | `SDD_MODEL` | `claude-opus-5-5` | Model used to write the SDD |
 | `SDD_EFFORT` | `high` | Reasoning effort: `low`, `medium`, `high`, `xhigh`, `max` |
 | `PORT` | `4000` | Web server port |

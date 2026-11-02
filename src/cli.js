@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env'), quiet: true }); // loads ANTHROPIC_API_KEY etc. from .env
 // Usage:
 //   node src/cli.js path/to/BRD.pdf [--out output] [--project "Name"] [--prepared-by "Team"]
 //   node src/cli.js --from-json examples/sample-sdd.json [--out output]   (render only, no API call)
